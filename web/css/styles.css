@@ -253,3 +253,19 @@ tr.clickable:hover td { background: var(--surface-2); }
 /* En una sola columna, las tarjetas que abarcan dos columnas vuelven a ocupar una. */
 body.mobile .grid-2 > *, body.mobile .grid-3 > *, body.mobile .grid-4 > * { grid-column: auto !important; }
 @media (max-width: 900px) { .grid-2 > *, .grid-3 > * { grid-column: auto !important; } }
+
+/* ---------- Inicio de sesión (la app abre aquí) ---------- */
+.login-layout { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 460px); gap: 20px; justify-content: center; align-items: start; margin-top: 24px; }
+.login-layout > .card { margin-top: 0; }
+.login-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+.login-brand .brand-mark { width: 48px; height: 48px; font-size: 1.4rem; border-radius: 12px; }
+.login-brand h1 { margin: 0; font-size: 1.6rem; color: var(--primary); }
+.login-brand p { margin: 0; }
+.quick-list { display: flex; flex-direction: column; gap: 10px; }
+.quick { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); font: inherit; color: var(--ink); cursor: pointer; transition: border-color .15s, background .15s; }
+.quick:hover { border-color: var(--accent); background: var(--accent-soft); }
+.quick b, .quick small { display: block; }
+.quick small { color: var(--muted); font-size: .8rem; }
+.quick-icon { font-size: 1.6rem; width: 42px; height: 42px; display: grid; place-items: center; background: var(--surface); border-radius: 10px; flex: none; }
+body.mobile .login-layout { grid-template-columns: 1fr; margin-top: 4px; }
+@media (max-width: 900px) { .login-layout { grid-template-columns: 1fr; } }

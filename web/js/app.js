@@ -124,10 +124,10 @@ function poll(fn, ms) {
 }
 
 const NAV = {
-  anon: [['#/', 'Inicio'], ['#/arquitectura', 'Arquitectura'], ['#/login', 'Ingresar'], ['#/registro', 'Crear cuenta']],
+  anon: [['#/login', 'Ingresar'], ['#/registro', 'Crear cuenta'], ['#/arquitectura', 'Arquitectura']],
   cliente: [['#/inicio', 'Mis créditos'], ['#/solicitar', 'Solicitar'], ['#/perfil', 'Mi perfil'], ['#/arquitectura', 'Arquitectura']],
-  analista: [['#/revision', 'Revisión manual'], ['#/creditos', 'Créditos'], ['#/tablero', 'Tablero'], ['#/contabilidad', 'Contabilidad'], ['#/arquitectura', 'Arquitectura']],
-  admin: [['#/tablero', 'Tablero'], ['#/creditos', 'Créditos'], ['#/contabilidad', 'Contabilidad'], ['#/eventos', 'Bus de eventos'], ['#/auditoria', 'Auditoría'], ['#/arquitectura', 'Arquitectura']],
+  analista: [['#/revision', 'Revisión manual'], ['#/creditos', 'Créditos'], ['#/clientes', 'Clientes'], ['#/tablero', 'Tablero'], ['#/contabilidad', 'Contabilidad'], ['#/arquitectura', 'Arquitectura']],
+  admin: [['#/tablero', 'Tablero'], ['#/creditos', 'Créditos'], ['#/clientes', 'Clientes'], ['#/contabilidad', 'Contabilidad'], ['#/eventos', 'Bus de eventos'], ['#/auditoria', 'Auditoría'], ['#/arquitectura', 'Arquitectura']],
 };
 const HOME = { cliente: '#/inicio', analista: '#/revision', admin: '#/tablero' };
 
@@ -156,7 +156,7 @@ $$('.channel-switch button').forEach((b) =>
 );
 
 const ROUTES = {
-  '': { view: viewHome },
+  '': { view: viewLogin },
   login: { view: viewLogin },
   registro: { view: viewRegister },
   arquitectura: { view: viewArchitecture },
@@ -167,6 +167,7 @@ const ROUTES = {
   perfil: { view: viewProfile, roles: ['cliente'] },
   revision: { view: viewReview, roles: ['analista', 'admin'] },
   creditos: { view: viewAllCredits, roles: ['analista', 'admin'] },
+  clientes: { view: viewCustomers, roles: ['analista', 'admin'] },
   tablero: { view: viewDashboard, roles: ['analista', 'admin'] },
   contabilidad: { view: viewAccounting, roles: ['analista', 'admin'] },
   eventos: { view: viewEvents, roles: ['admin'] },
@@ -178,7 +179,7 @@ async function render() {
   const [name, ...params] = location.hash.replace(/^#\/?/, '').split('/');
   if (name === 'salir') {
     setSession(null);
-    location.hash = '#/';
+    location.hash = '#/login';
     return;
   }
   const route = ROUTES[name];
@@ -255,37 +256,54 @@ async function login(email, password, container) {
   });
 }
 
+const QUICK_ACCESS = [
+  { email: 'maria.gomez@correo.co', password: 'Cliente2026!', icon: '👤', title: 'Cliente', text: 'María Gómez · crédito vigente' },
+  { email: 'analista@finantech.co', password: 'Analista2026!', icon: '🧾', title: 'Analista de crédito', text: 'Revisión manual de solicitudes' },
+  { email: 'admin@finantech.co', password: 'Admin2026!', icon: '📊', title: 'Gerencia', text: 'Tablero, contabilidad y auditoría' },
+];
+
 function viewLogin() {
+  if (state.user) {
+    location.hash = HOME[state.user.role];
+    return;
+  }
   main.innerHTML = `
-    <div id="auth-area">
-      <div class="grid-2" style="max-width:900px;margin:0 auto">
-        <div class="card">
-          <h2>Ingresar</h2>
-          <p class="muted">Un solo inicio de sesión para el portal web y la app móvil.</p>
-          <form id="login-form">
-            <div class="field"><label>Correo electrónico</label><input name="email" type="email" required autocomplete="username"></div>
-            <div class="field"><label>Contraseña</label><input name="password" type="password" required autocomplete="current-password"></div>
-            <button class="btn block">Continuar</button>
-          </form>
-          <p style="margin-top:14px" class="muted">¿No tiene cuenta? <a href="#/registro">Créela en 2 minutos</a></p>
-        </div>
-        <div class="demo-box">
-          <p><b>Usuarios internos de demostración</b></p>
-          <p>Gerencia / Admin:<br><code>admin@finantech.co</code> · <code>Admin2026!</code></p>
-          <p>Analista de crédito:<br><code>analista@finantech.co</code> · <code>Analista2026!</code></p>
-          <p style="margin:0">Clientes: cree una cuenta nueva. La primera vez desde este navegador se pedirá un <b>OTP</b> (seguridad adaptativa); luego el dispositivo queda reconocido.</p>
+    <div id="auth-area" class="login-layout">
+      <div class="card login-card">
+        <div class="login-brand"><span class="brand-mark">F</span><div><h1>FinanTech</h1><p class="muted">Banca digital · Crédito en línea</p></div></div>
+        <form id="login-form">
+          <div class="field"><label>Correo electrónico</label><input name="email" type="email" required autocomplete="username" placeholder="usuario@correo.co"></div>
+          <div class="field"><label>Contraseña</label><input name="password" type="password" required autocomplete="current-password"></div>
+          <button class="btn block">Ingresar</button>
+        </form>
+        <p style="margin-top:14px;text-align:center" class="muted">¿Cliente nuevo? <a href="#/registro">Abra su cuenta 100% digital</a></p>
+      </div>
+      <div class="card">
+        <h3>Acceso rápido de demostración</h3>
+        <p class="muted">Entre con un usuario de prueba. La primera vez desde este navegador se pedirá un código OTP, que aquí se muestra en pantalla.</p>
+        <div class="quick-list">
+          ${QUICK_ACCESS.map((q, i) => `<button type="button" class="quick" data-i="${i}"><span class="quick-icon">${q.icon}</span><span><b>${esc(q.title)}</b><small>${esc(q.text)}</small><small class="mono">${esc(q.email)}</small></span></button>`).join('')}
         </div>
       </div>
     </div>`;
-  $('#login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const { email, password } = formData(e.target);
+  const submit = async (email, password) => {
     try {
       await login(email, password, $('#auth-area'));
     } catch (err) {
-      toast(err.message, 'error');
+      toast(err.status === 401 && email === QUICK_ACCESS[0].email ? 'El cliente demo no existe. Ejecute "npm run reset" y luego "npm start" para cargar los datos de ejemplo.' : err.message, 'error');
     }
+  };
+  $('#login-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const { email, password } = formData(e.target);
+    submit(email, password);
   });
+  $$('.quick').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const q = QUICK_ACCESS[btn.dataset.i];
+      submit(q.email, q.password);
+    }),
+  );
 }
 
 function viewRegister() {
@@ -314,94 +332,6 @@ function viewRegister() {
       toast(err.message, 'error');
     }
   });
-}
-
-// ---------------------------------------------------------------- inicio público + simulador
-async function simulatorCard() {
-  const { products } = await meta();
-  return `
-    <div class="card" id="simulator">
-      <h3>Simula tu crédito</h3>
-      <form id="sim-form">
-        <div class="field"><label>Producto</label>
-          <select name="product">${products.map((p) => `<option value="${p.id}">${esc(p.name)} — ${pct(p.monthlyRate, 2)} M.V.</option>`).join('')}</select>
-        </div>
-        <div class="field"><label>Monto: <span id="sim-amount-label"></span></label><input type="range" name="amount" step="100000"></div>
-        <div class="field"><label>Plazo: <span id="sim-term-label"></span> meses</label><input type="range" name="term" step="1"></div>
-      </form>
-      <div class="sim-result" id="sim-result"></div>
-    </div>`;
-}
-
-async function bindSimulator(onChange) {
-  const { products } = await meta();
-  const form = $('#sim-form');
-  const setRanges = () => {
-    const p = products.find((x) => x.id === form.product.value);
-    const amount = Math.min(p.maxAmount, Math.max(p.minAmount, Number(form.amount.dataset.want || 5_000_000)));
-    const term = Math.min(p.maxTerm, Math.max(p.minTerm, 24));
-    form.amount.setAttribute('max', p.maxAmount);
-    form.amount.setAttribute('min', p.minAmount);
-    form.term.setAttribute('max', p.maxTerm);
-    form.term.setAttribute('min', p.minTerm);
-    form.amount.value = amount;
-    form.term.value = term;
-  };
-  const update = debounce(async () => {
-    if (!document.body.contains(form)) return;
-    $('#sim-amount-label').textContent = money(form.amount.value);
-    $('#sim-term-label').textContent = form.term.value;
-    try {
-      const s = await api('GET', `/credits/simulate?product=${form.product.value}&amount=${form.amount.value}&term=${form.term.value}`);
-      if (!document.body.contains(form)) return;
-      $('#sim-result').innerHTML = `
-        <small>Cuota mensual estimada</small>
-        <div class="big-number">${money(s.installment)}</div>
-        <small>Tasa ${pct(s.monthlyRate, 2)} M.V. (${pct(s.annualRate, 2)} E.A.) · Intereses totales ${money(s.totalInterest)}</small>`;
-      onChange?.(s);
-    } catch (err) {
-      if (document.body.contains(form)) $('#sim-result').textContent = err.message;
-    }
-  }, 120);
-  form.product.addEventListener('change', () => {
-    setRanges();
-    update();
-  });
-  form.amount.addEventListener('input', update);
-  form.term.addEventListener('input', update);
-  setRanges();
-  update();
-}
-
-async function viewHome() {
-  if (state.user) {
-    location.hash = HOME[state.user.role];
-    return;
-  }
-  const seq = renderSeq;
-  const simulator = await simulatorCard();
-  if (stale(seq)) return;
-  main.innerHTML = `
-    <section class="hero">
-      <div>
-        <span class="chip accent">Crédito 100% digital</span>
-        <h1 style="margin-top:12px">Tu crédito aprobado <span>en minutos</span>, no en días.</h1>
-        <p class="lead">Vincúlate desde el celular con validación biométrica, solicita, firma electrónicamente y recibe el dinero en tu cuenta. Sin filas, sin papeles, sin volver a escribir tus datos.</p>
-        <div class="row" style="margin-top:18px">
-          <a class="btn accent" href="#/registro">Solicitar mi crédito</a>
-          <a class="btn ghost" href="#/login">Ya tengo cuenta</a>
-        </div>
-      </div>
-      ${simulator}
-    </section>
-    <h2>Así funciona</h2>
-    <div class="steps">
-      <div class="step"><div class="n">1</div><b>Vinculación digital</b><small>Identidad validada con documento y prueba de vida.</small></div>
-      <div class="step"><div class="n">2</div><b>Evaluación en línea</b><small>Motor de riesgo con decisión automática.</small></div>
-      <div class="step"><div class="n">3</div><b>Firma electrónica</b><small>Contrato firmado con sello de tiempo.</small></div>
-      <div class="step"><div class="n">4</div><b>Desembolso</b><small>El dinero llega a tu cuenta y se contabiliza al instante.</small></div>
-    </div>`;
-  await bindSimulator();
 }
 
 // ---------------------------------------------------------------- vinculación (onboarding)
@@ -852,6 +782,33 @@ async function viewAllCredits() {
   $('#status-filter').addEventListener('change', load);
   await load();
   poll(load, 4000);
+}
+
+async function viewCustomers() {
+  const load = async () => {
+    const q = $('#customer-q').value.trim();
+    const [customers, credits] = await Promise.all([api('GET', `/customers${q ? `?q=${encodeURIComponent(q)}` : ''}`), api('GET', '/credits')]);
+    const byCustomer = {};
+    for (const c of credits) (byCustomer[c.customerId] ||= []).push(c);
+    $('#customers').innerHTML = customers.length
+      ? `<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Documento</th><th>Contacto</th><th>Ciudad</th><th>KYC</th><th>Créditos</th><th class="num">Saldo vigente</th><th>Vinculado</th></tr></thead><tbody>
+        ${customers.map((cu) => {
+          const list = byCustomer[cu.id] || [];
+          const balance = list.filter((c) => c.status === 'desembolsada').reduce((s, c) => s + c.balance, 0);
+          return `<tr><td><b>${esc(cu.firstName)} ${esc(cu.lastName)}</b><br><small class="muted">${esc(cu.email)}</small></td><td class="mono">${esc(cu.documentType)} ${esc(cu.documentNumber)}</td><td>${esc(cu.phone)}</td><td>${esc(cu.city)}</td>
+            <td>${cu.kyc.status === 'verificado' ? '<span class="chip ok">Verificado</span>' : '<span class="chip danger">Rechazado</span>'}</td>
+            <td>${list.map((c) => `<a href="#/credito/${c.id}" title="${esc(c.productName)} ${money(c.amount)}">${chip(c.status)}</a>`).join(' ') || '<small class="muted">—</small>'}</td>
+            <td class="num">${balance ? money(balance) : '—'}</td><td>${dateTime(cu.createdAt)}</td></tr>`;
+        }).join('')}
+        </tbody></table></div>`
+      : '<div class="empty">No hay clientes que coincidan</div>';
+  };
+  main.innerHTML = `
+    <div class="page-head"><div><h1>Clientes</h1><p>Registro maestro único (servicio de Clientes). ${state.user.role === 'analista' ? 'Como analista, ve los datos sensibles enmascarados.' : ''}</p></div>
+      <input id="customer-q" type="search" placeholder="Buscar por nombre, documento o correo" style="max-width:320px"></div>
+    <div class="card" id="customers"></div>`;
+  $('#customer-q').addEventListener('input', debounce(load, 250));
+  await load();
 }
 
 // ---------------------------------------------------------------- gerencia

@@ -72,17 +72,44 @@ if (require.main === module) {
       }
     });
   }
-  setTimeout(() => {
+  // Primera ejecución (sin clientes): carga datos de demostración pasando por el flujo real.
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { DATA_DIR } = require('../shared/config');
+  const firstRun = !fs.existsSync(path.join(DATA_DIR, 'customers.json')) && process.env.SEED !== 'false';
+
+  const banner = () =>
     console.log(`
 \x1b[1m  FinanTech — prototipo funcional\x1b[0m
   ─────────────────────────────────────────────
-  Abrir:        \x1b[36mhttp://localhost:${ports.gateway}\x1b[0m
-  Administrador: admin@finantech.co    / Admin2026!
-  Analista:      analista@finantech.co / Analista2026!
-  Cliente:       cree una cuenta desde "Crear cuenta"
+  Abrir:          \x1b[36mhttp://localhost:${ports.gateway}\x1b[0m
+  Gerencia:       admin@finantech.co     / Admin2026!
+  Analista:       analista@finantech.co  / Analista2026!
+  Cliente demo:   maria.gomez@correo.co  / Cliente2026!
   Ctrl+C para detener todos los servicios.
 `);
-  }, 1200);
+
+  (async () => {
+    const base = `http://127.0.0.1:${ports.gateway}`;
+    for (let i = 0; i < 60; i++) {
+      try {
+        const h = await (await fetch(`${base}/api/health`)).json();
+        if (h.services.every((s) => s.status === 'UP')) break;
+      } catch {
+        // aún arrancando
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    if (firstRun) {
+      await new Promise((r) => setTimeout(r, 1500)); // tiempo para que los servicios se suscriban al bus
+      try {
+        await require('./seed').seed(base, (m) => console.log(`\x1b[1m${'datos demo'.padEnd(13)}\x1b[0m│ ${m}`));
+      } catch (err) {
+        console.error('No se pudieron cargar los datos de demostración:', err.message);
+      }
+    }
+    banner();
+  })();
   const shutdown = () => {
     stop();
     setTimeout(() => process.exit(0), 300);

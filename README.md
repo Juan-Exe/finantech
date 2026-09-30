@@ -49,6 +49,10 @@ Cuando la terminal muestre el recuadro **"FinanTech — prototipo funcional"**, 
 
 **http://localhost:8080**
 
+La app abre en la pantalla de **inicio de sesión**. Use los botones de **Acceso rápido** para entrar como Cliente, Analista o Gerencia.
+
+**La primera vez** que se ejecuta, `npm start` carga automáticamente **7 clientes de ejemplo** haciéndolos pasar por el flujo real (registro, vinculación, solicitud, evaluación, firma, desembolso y pagos). Así la app arranca con créditos vigentes, solicitudes pendientes del analista, un rechazo y contabilidad con movimientos. Tarda unos 10 segundos.
+
 Deje la terminal abierta mientras usa la aplicación: ahí se ve en vivo cómo los servicios se comunican (eventos del bus, asientos contables, notificaciones enviadas).
 
 ### 4. Detenerla
@@ -61,7 +65,10 @@ En la terminal donde corre, presione **Ctrl + C**. Se detienen todos los servici
 |---|---|
 | `npm start` | Levanta el bus de eventos, los 8 microservicios y el API Gateway. |
 | `npm test` | Ejecuta la prueba de extremo a extremo (26 verificaciones) en una instancia aislada: no toca sus datos ni necesita detener `npm start`. |
-| `npm run reset` | Borra todos los datos (clientes, créditos, contabilidad…) para empezar la demostración desde cero. Hágalo con la plataforma detenida. |
+| `npm run reset` | Borra todos los datos. En el siguiente `npm start` se vuelven a cargar los clientes de ejemplo. Hágalo con la plataforma detenida. |
+| `npm run seed` | Vuelve a cargar los clientes de ejemplo sobre una plataforma que ya está corriendo (solo si no existen). |
+
+Para arrancar **sin** datos de ejemplo: `npm run reset` y luego `$env:SEED="false"; npm start` (PowerShell) o `SEED=false npm start` (macOS/Linux).
 
 ## 3. Usuarios
 
@@ -69,7 +76,20 @@ En la terminal donde corre, presione **Ctrl + C**. Se detienen todos los servici
 |---|---|---|---|
 | Gerencia / Admin | `admin@finantech.co` | `Admin2026!` | Tablero, créditos, contabilidad, bus de eventos, auditoría |
 | Analista de crédito | `analista@finantech.co` | `Analista2026!` | Cola de revisión manual, créditos, tablero, contabilidad |
-| Cliente | se crea con **"Crear cuenta"** | mínimo 8 caracteres, con letras y números | Sus créditos, solicitudes, perfil y notificaciones |
+| Cliente de ejemplo | `maria.gomez@correo.co` | `Cliente2026!` | Crédito vigente con 3 cuotas pagadas, notificaciones, perfil |
+| Cliente nuevo | se crea con **"Crear cuenta"** | mínimo 8 caracteres, con letras y números | Vinculación digital y su primera solicitud |
+
+### Clientes de ejemplo (todos con contraseña `Cliente2026!`)
+
+| Cliente | Situación inicial |
+|---|---|
+| `maria.gomez@correo.co` | Libre inversión $8M vigente, 3 cuotas pagadas (canal app móvil) |
+| `ana.torres@correo.co` | Libre inversión $12M vigente, firmado con OTP reforzado |
+| `jorge.herrera@correo.co` | Educativo $4,5M vigente, 5 cuotas pagadas |
+| `sofia.castro@correo.co` | Crédito aprobado, **pendiente de firma** (entre y fírmelo) |
+| `carlos.ruiz@correo.co` | Vehículo $35M **en revisión manual** (monto > $20M) |
+| `luisa.martinez@correo.co` | Educativo $3M **en revisión manual** (historial insuficiente) |
+| `pedro.diaz@correo.co` | Solicitud **rechazada** (reporte negativo en central) |
 
 **Código OTP:** la primera vez que un usuario entra desde un navegador, se pide un código de 6 dígitos. En este prototipo el código (que en producción llegaría por SMS o correo) **se muestra en pantalla**. Desde ese mismo navegador ya no se pide de nuevo, porque el dispositivo queda reconocido.
 
@@ -96,17 +116,14 @@ Cada documento solo puede registrarse una vez (registro maestro único). Para re
 ## 5. Guion sugerido para la presentación (≈10 minutos)
 
 1. **Arquitectura** (menú superior): mostrar las 5 capas con el estado real de cada servicio (punto verde = funcionando).
-2. **Crear cuenta** como cliente → aparece el OTP → **vinculación digital** con un documento terminado en `3`, prueba de vida y autorización de datos.
-3. **Solicitar** $5.000.000 a 24 meses → la pantalla muestra en vivo la evaluación, luego **Aprobada**.
-4. **Firmar electrónicamente** → el desembolso llega solo → aparece el plan de amortización → **Pagar cuota**.
-5. Cambiar el selector **Web → App móvil** (arriba a la derecha): es la misma sesión y los mismos datos en el otro canal.
-6. **Salir** y entrar como `admin@finantech.co`:
-   - **Tablero**: KPI, embudo y tiempo de solicitud a desembolso **en segundos** (antes eran días).
-   - **Contabilidad**: los asientos se generaron solos y el balance de prueba está cuadrado.
-   - **Bus de eventos**: cada evento publicado y a qué servicios se entregó.
-   - **Auditoría**: quién hizo qué, desde qué canal, con verificación de integridad.
-7. Opcional: un cliente con documento terminado en `5` → entrar como **analista** → aprobar en **Revisión manual**.
-8. Opcional: una cuenta terminada en `000` → ver la **compensación** y corregir la cuenta.
+2. **Acceso rápido → Gerencia**: el tablero ya muestra la operación de los clientes de ejemplo. Recorrer **Clientes**, **Contabilidad**, **Bus de eventos** y **Auditoría**.
+3. **Acceso rápido → Analista**: aprobar el crédito de Carlos o Luisa en **Revisión manual**.
+4. **Salir → Crear cuenta** como cliente nuevo → aparece el OTP → **vinculación digital** con un documento terminado en `3`, prueba de vida y autorización de datos.
+5. **Solicitar** $5.000.000 a 24 meses → la pantalla muestra en vivo la evaluación, luego **Aprobada**.
+6. **Firmar electrónicamente** → el desembolso llega solo → aparece el plan de amortización → **Pagar cuota**.
+7. Cambiar el selector **Web → App móvil** (arriba a la derecha): es la misma sesión y los mismos datos en el otro canal.
+8. Volver a **Gerencia**: el tablero, la contabilidad y la auditoría ya incluyen el crédito recién creado. El tiempo de solicitud a desembolso se mide **en segundos** (antes eran días).
+9. Opcional: una cuenta terminada en `000` → ver la **compensación** y corregir la cuenta.
 
 ## 6. Arquitectura
 
@@ -163,7 +180,7 @@ finantech/
 │   ├── disbursement/  accounting/  notifications/  analytics/
 ├── event-bus/           Capa 4: bus de eventos
 ├── shared/              Utilidades comunes (HTTP, JWT, cliente del bus, almacenamiento)
-├── scripts/             start.js (arranque), e2e.js (pruebas), reset.js
+├── scripts/             start.js (arranque), seed.js (datos de ejemplo), e2e.js (pruebas), reset.js
 ├── docs/                Documento del taller y enunciado del reto
 └── data/                Capa 5: se crea al ejecutar; una base por servicio (no se sube a git)
 ```
