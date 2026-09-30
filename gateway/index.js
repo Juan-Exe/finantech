@@ -214,6 +214,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[gateway] El puerto ${ports.gateway} ya está en uso. Ciérrelo o elija otro, p. ej. PORT=3000.`);
+    process.exit(1);
+  }
+  throw err;
+});
+
 server.listen(ports.gateway, process.env.HOST || '127.0.0.1', () => {
   console.log(`[gateway] escuchando en http://localhost:${ports.gateway}`);
 });

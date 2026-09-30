@@ -118,6 +118,13 @@ function createApp(name) {
   app.listen = (port, host = '127.0.0.1') =>
     new Promise((resolve) => {
       const server = http.createServer(app.handle);
+      server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.error(`[${name}] El puerto ${port} ya está en uso. ¿Hay otra copia de FinanTech abierta? Ciérrela o use PORT_OFFSET.`);
+          process.exit(1);
+        }
+        throw err;
+      });
       server.listen(port, host, () => {
         console.log(`[${name}] escuchando en http://${host}:${port}`);
         resolve(server);

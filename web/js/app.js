@@ -348,17 +348,19 @@ async function bindSimulator(onChange) {
     form.term.value = term;
   };
   const update = debounce(async () => {
+    if (!document.body.contains(form)) return;
     $('#sim-amount-label').textContent = money(form.amount.value);
     $('#sim-term-label').textContent = form.term.value;
     try {
       const s = await api('GET', `/credits/simulate?product=${form.product.value}&amount=${form.amount.value}&term=${form.term.value}`);
+      if (!document.body.contains(form)) return;
       $('#sim-result').innerHTML = `
         <small>Cuota mensual estimada</small>
         <div class="big-number">${money(s.installment)}</div>
         <small>Tasa ${pct(s.monthlyRate, 2)} M.V. (${pct(s.annualRate, 2)} E.A.) · Intereses totales ${money(s.totalInterest)}</small>`;
       onChange?.(s);
     } catch (err) {
-      $('#sim-result').textContent = err.message;
+      if (document.body.contains(form)) $('#sim-result').textContent = err.message;
     }
   }, 120);
   form.product.addEventListener('change', () => {

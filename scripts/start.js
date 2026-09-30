@@ -52,8 +52,26 @@ function startAll({ env = {}, silent = false } = {}) {
 }
 
 if (require.main === module) {
+  const major = Number(process.versions.node.split('.')[0]);
+  if (major < 20) {
+    console.error(`FinanTech requiere Node.js 20 o superior (versión actual: ${process.version}). Descárguelo en https://nodejs.org`);
+    process.exit(1);
+  }
   const { ports } = require('../shared/config');
-  const { stop } = startAll();
+  const { children, stop } = startAll();
+  // Si un componente cae durante el arranque (p. ej. puerto ocupado), se detiene todo con un mensaje claro.
+  let booting = true;
+  setTimeout(() => (booting = false), 5000);
+  for (const child of children) {
+    child.on('exit', (code) => {
+      if (booting && code) {
+        booting = false;
+        console.error('\nNo se pudo iniciar la plataforma. Revise el mensaje anterior.');
+        stop();
+        setTimeout(() => process.exit(1), 300);
+      }
+    });
+  }
   setTimeout(() => {
     console.log(`
 \x1b[1m  FinanTech — prototipo funcional\x1b[0m
