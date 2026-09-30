@@ -120,7 +120,7 @@ Cada documento solo puede registrarse una vez (registro maestro único). Para re
 3. **Salir → Crear cuenta** como cliente nuevo → aparece el OTP → **vinculación digital** con un documento terminado en `3`, prueba de vida y autorización de datos.
 4. **Solicitar** $5.000.000 a 24 meses → la pantalla muestra en vivo la evaluación, luego **Aprobada**.
 5. **Firmar electrónicamente** → el desembolso llega solo → aparece el plan de amortización → **Pagar cuota**.
-6. Cambiar el selector **Web → App móvil** (arriba a la derecha): es la misma sesión y los mismos datos en el otro canal.
+6. Abrir la app desde el **celular** (misma red, ver sección 7): se adapta a la pantalla y la solicitud queda registrada por el canal **app móvil**.
 7. Volver a **Gerencia**: el tablero, la contabilidad y la auditoría ya incluyen el crédito recién creado. El tiempo de solicitud a desembolso se mide **en segundos** (antes eran días).
 8. Opcional: una cuenta terminada en `000` → ver la **compensación** y corregir la cuenta.
 
@@ -130,7 +130,7 @@ Cada documento solo puede registrarse una vez (registro maestro único). Para re
 
 | Capa | Componente | Carpeta | Puerto |
 |---|---|---|---|
-| 1. Canales | Portal web y app móvil sobre los mismos servicios (selector "Web / App móvil") | [web/](web/) | 8080 |
+| 1. Canales | Portal web y app móvil sobre los mismos servicios (el canal se detecta por el tamaño de pantalla) | [web/](web/) | 8080 |
 | 2. API Gateway | Token JWT, control de acceso por rol, límites de uso, enrutamiento, auditoría encadenada por hash, cabeceras de seguridad | [gateway/](gateway/) | 8080 |
 | 3. Microservicios | Identidad, Clientes, Créditos, Evaluación, Desembolso y pagos, Contabilidad, Notificaciones | [services/](services/) | 4001–4007 |
 | 4. Bus de eventos | Publicación/suscripción, entrega ordenada, reintentos, outbox, idempotencia | [event-bus/](event-bus/) | 4100 |

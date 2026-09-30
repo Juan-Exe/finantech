@@ -52,7 +52,8 @@ function toast(message, type = '') {
 const state = {
   token: storage.get('ft_token', sessionStorage),
   user: JSON.parse(storage.get('ft_user', sessionStorage) || 'null'),
-  channel: storage.get('ft_channel') || 'web',
+  // El canal se detecta por el tamaño de pantalla: en el celular la app se usa como app móvil.
+  channel: window.matchMedia('(max-width: 700px)').matches ? 'movil' : 'web',
   meta: null,
 };
 
@@ -141,19 +142,6 @@ function renderNav(current) {
     : '';
   $('#nav').innerHTML = links + user;
 }
-
-function applyChannel() {
-  document.body.classList.toggle('mobile', state.channel === 'movil');
-  $$('.channel-switch button').forEach((b) => b.classList.toggle('on', b.dataset.channel === state.channel));
-}
-$$('.channel-switch button').forEach((b) =>
-  b.addEventListener('click', () => {
-    state.channel = b.dataset.channel;
-    storage.set('ft_channel', state.channel);
-    applyChannel();
-    toast(state.channel === 'movil' ? 'Vista de la app móvil' : 'Vista del portal web');
-  }),
-);
 
 const ROUTES = {
   '': { view: viewLogin },
@@ -628,7 +616,7 @@ async function viewCredit(id) {
     const ev = c.evaluation;
     main.innerHTML = `
       <div class="page-head"><div><a href="${isClient ? '#/inicio' : '#/creditos'}">← Volver</a><h1 style="margin-top:6px">${esc(c.productName)} · ${money(c.amount)}</h1>
-        <p>${esc(c.number)} · radicado ${dateTime(c.createdAt)} por ${esc(c.channel)}</p></div>${chip(c.status)}</div>
+        <p>${esc(c.number)} · radicado ${dateTime(c.createdAt)} por ${c.channel === 'app-movil' ? 'app móvil' : 'portal web'}</p></div>${chip(c.status)}</div>
       <div class="card">${progressHtml(c.status)}</div>
       <div style="margin-top:16px">${panel}</div>
       <div class="grid-2" style="margin-top:16px">
@@ -911,5 +899,4 @@ async function viewAudit() {
 
 // ---------------------------------------------------------------- arranque
 window.addEventListener('hashchange', render);
-applyChannel();
 render();

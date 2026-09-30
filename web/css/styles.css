@@ -269,3 +269,13 @@ body.mobile .grid-2 > *, body.mobile .grid-3 > *, body.mobile .grid-4 > * { grid
 .quick-icon { font-size: 1.6rem; width: 42px; height: 42px; display: grid; place-items: center; background: var(--surface); border-radius: 10px; flex: none; }
 body.mobile .login-layout { grid-template-columns: 1fr; margin-top: 4px; }
 @media (max-width: 900px) { .login-layout { grid-template-columns: 1fr; } }
+
+/* Celular: el menú ocupa su propia fila bajo el logo. */
+@media (max-width: 700px) {
+  .topbar { flex-wrap: wrap; padding: 10px 14px; gap: 8px; }
+  .nav { order: 3; flex: 1 1 100%; gap: 2px; }
+  .nav a { padding: 6px 9px; font-size: .88rem; }
+  .nav .spacer, .nav .user-pill { display: none; }
+  .main { padding: 16px 14px 32px; }
+  .page-head h1, h1 { font-size: 1.5rem; }
+}
