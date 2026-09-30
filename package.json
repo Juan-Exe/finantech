@@ -1,0 +1,15 @@
+{
+  "name": "finantech",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prototipo funcional de la arquitectura empresarial de FinanTech: canales, API Gateway, microservicios, bus de eventos y capa de datos.",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "test": "node scripts/e2e.js",
+    "reset": "node scripts/reset.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
