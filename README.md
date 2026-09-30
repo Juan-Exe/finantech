@@ -28,8 +28,8 @@ Cliente → App/Web → Autenticación → Crédito → Evaluación → Aprobaci
 
 ```powershell
 # 1. Descargar el proyecto (solo la primera vez)
-git clone https://github.com/<usuario>/<repositorio>.git
-cd <repositorio>
+git clone https://github.com/Juan-Exe/finantech.git
+cd finantech
 
 # 2. Arrancar la plataforma completa
 npm start
@@ -38,8 +38,8 @@ npm start
 ### macOS / Linux
 
 ```bash
-git clone https://github.com/<usuario>/<repositorio>.git
-cd <repositorio>
+git clone https://github.com/Juan-Exe/finantech.git
+cd finantech
 npm start
 ```
 
