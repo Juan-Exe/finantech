@@ -115,15 +115,14 @@ Cada documento solo puede registrarse una vez (registro maestro único). Para re
 
 ## 5. Guion sugerido para la presentación (≈10 minutos)
 
-1. **Arquitectura** (menú superior): mostrar las 5 capas con el estado real de cada servicio (punto verde = funcionando).
-2. **Acceso rápido → Gerencia**: el tablero ya muestra la operación de los clientes de ejemplo. Recorrer **Clientes**, **Contabilidad**, **Bus de eventos** y **Auditoría**.
-3. **Acceso rápido → Analista**: aprobar el crédito de Carlos o Luisa en **Revisión manual**.
-4. **Salir → Crear cuenta** como cliente nuevo → aparece el OTP → **vinculación digital** con un documento terminado en `3`, prueba de vida y autorización de datos.
-5. **Solicitar** $5.000.000 a 24 meses → la pantalla muestra en vivo la evaluación, luego **Aprobada**.
-6. **Firmar electrónicamente** → el desembolso llega solo → aparece el plan de amortización → **Pagar cuota**.
-7. Cambiar el selector **Web → App móvil** (arriba a la derecha): es la misma sesión y los mismos datos en el otro canal.
-8. Volver a **Gerencia**: el tablero, la contabilidad y la auditoría ya incluyen el crédito recién creado. El tiempo de solicitud a desembolso se mide **en segundos** (antes eran días).
-9. Opcional: una cuenta terminada en `000` → ver la **compensación** y corregir la cuenta.
+1. **Acceso rápido → Gerencia**: el tablero ya muestra la operación de los clientes de ejemplo. Recorrer **Clientes**, **Contabilidad**, **Bus de eventos** y **Auditoría**.
+2. **Acceso rápido → Analista**: aprobar el crédito de Carlos o Luisa en **Revisión manual**.
+3. **Salir → Crear cuenta** como cliente nuevo → aparece el OTP → **vinculación digital** con un documento terminado en `3`, prueba de vida y autorización de datos.
+4. **Solicitar** $5.000.000 a 24 meses → la pantalla muestra en vivo la evaluación, luego **Aprobada**.
+5. **Firmar electrónicamente** → el desembolso llega solo → aparece el plan de amortización → **Pagar cuota**.
+6. Cambiar el selector **Web → App móvil** (arriba a la derecha): es la misma sesión y los mismos datos en el otro canal.
+7. Volver a **Gerencia**: el tablero, la contabilidad y la auditoría ya incluyen el crédito recién creado. El tiempo de solicitud a desembolso se mide **en segundos** (antes eran días).
+8. Opcional: una cuenta terminada en `000` → ver la **compensación** y corregir la cuenta.
 
 ## 6. Arquitectura
 
@@ -167,7 +166,7 @@ Créditos guarda solo el `customerId`: los datos del cliente se consultan por AP
 | Contabilidad como suscriptor del bus (sección 7) | Menú Contabilidad: asientos automáticos y balance cuadrado. |
 | Bodega analítica (4.3.5) | Tablero de gestión alimentado solo por eventos. |
 | Trazabilidad y auditoría (4.3.2, 6.2) | Menú Auditoría: registros encadenados por hash, con verificación de integridad. |
-| Observabilidad (5.4) | Estado y latencia de cada servicio en el Tablero y en Arquitectura. |
+| Observabilidad (5.4) | Estado y latencia de cada servicio en el Tablero de gerencia. |
 
 ### Estructura del proyecto
 

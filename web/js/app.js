@@ -124,10 +124,10 @@ function poll(fn, ms) {
 }
 
 const NAV = {
-  anon: [['#/login', 'Ingresar'], ['#/registro', 'Crear cuenta'], ['#/arquitectura', 'Arquitectura']],
-  cliente: [['#/inicio', 'Mis créditos'], ['#/solicitar', 'Solicitar'], ['#/perfil', 'Mi perfil'], ['#/arquitectura', 'Arquitectura']],
-  analista: [['#/revision', 'Revisión manual'], ['#/creditos', 'Créditos'], ['#/clientes', 'Clientes'], ['#/tablero', 'Tablero'], ['#/contabilidad', 'Contabilidad'], ['#/arquitectura', 'Arquitectura']],
-  admin: [['#/tablero', 'Tablero'], ['#/creditos', 'Créditos'], ['#/clientes', 'Clientes'], ['#/contabilidad', 'Contabilidad'], ['#/eventos', 'Bus de eventos'], ['#/auditoria', 'Auditoría'], ['#/arquitectura', 'Arquitectura']],
+  anon: [['#/login', 'Ingresar'], ['#/registro', 'Crear cuenta']],
+  cliente: [['#/inicio', 'Mis créditos'], ['#/solicitar', 'Solicitar'], ['#/perfil', 'Mi perfil']],
+  analista: [['#/revision', 'Revisión manual'], ['#/creditos', 'Créditos'], ['#/clientes', 'Clientes'], ['#/tablero', 'Tablero'], ['#/contabilidad', 'Contabilidad']],
+  admin: [['#/tablero', 'Tablero'], ['#/creditos', 'Créditos'], ['#/clientes', 'Clientes'], ['#/contabilidad', 'Contabilidad'], ['#/eventos', 'Bus de eventos'], ['#/auditoria', 'Auditoría']],
 };
 const HOME = { cliente: '#/inicio', analista: '#/revision', admin: '#/tablero' };
 
@@ -151,7 +151,7 @@ $$('.channel-switch button').forEach((b) =>
     state.channel = b.dataset.channel;
     storage.set('ft_channel', state.channel);
     applyChannel();
-    toast(`Canal: ${state.channel === 'movil' ? 'App móvil' : 'Portal web'} — mismos servicios, misma sesión`);
+    toast(state.channel === 'movil' ? 'Vista de la app móvil' : 'Vista del portal web');
   }),
 );
 
@@ -159,7 +159,6 @@ const ROUTES = {
   '': { view: viewLogin },
   login: { view: viewLogin },
   registro: { view: viewRegister },
-  arquitectura: { view: viewArchitecture },
   vinculacion: { view: viewOnboarding, roles: ['cliente'] },
   inicio: { view: viewClientHome, roles: ['cliente'] },
   solicitar: { view: viewApply, roles: ['cliente'] },
@@ -337,7 +336,7 @@ function viewRegister() {
 // ---------------------------------------------------------------- vinculación (onboarding)
 function viewOnboarding() {
   main.innerHTML = `
-    <div class="page-head"><div><h1>Vinculación digital</h1><p>Paso 2 de 2 — estos datos se guardan una sola vez en el registro maestro de clientes.</p></div></div>
+    <div class="page-head"><div><h1>Vinculación digital</h1><p>Paso 2 de 2 — solo te pediremos estos datos una vez.</p></div></div>
     <form id="onb-form" class="grid-2">
       <div class="card">
         <h3>Datos personales</h3>
@@ -487,7 +486,7 @@ async function viewApply() {
             <div class="field"><label>Tipo de cuenta</label><select name="accountType"><option value="ahorros">Ahorros</option><option value="corriente">Corriente</option></select></div>
             <div class="field"><label>Número de cuenta</label><input name="accountNumber" required inputmode="numeric" pattern="[0-9]{6,16}" value="4567891234"></div>
           </div>
-          <small class="muted">Prueba de compensación (saga): una cuenta terminada en <code>000</code> es rechazada por el banco.</small>
+          <small class="muted">Dato de prueba: una cuenta terminada en <code>000</code> simula un rechazo del banco.</small>
         </div>
         <div class="card">
           <h3>Resumen</h3>
@@ -584,14 +583,14 @@ async function viewCredit(id) {
     const compensated = c.status === 'aprobada' && c.history.at(-1)?.note?.startsWith('Compensación');
     let panel = '';
     if (c.status === 'en_evaluacion' || c.status === 'radicada') {
-      panel = `<div class="alert info"><span class="spinner"></span> El motor de evaluación está analizando tu solicitud (evento <code>credit.requested</code> publicado en el bus)…</div>`;
+      panel = `<div class="alert info"><span class="spinner"></span> Estamos analizando tu solicitud. Esto toma solo unos segundos…</div>`;
     } else if (c.status === 'revision_manual') {
       panel = `<div class="alert warn">Tu solicitud está fuera de la política automática y fue asignada a un analista de crédito.</div>`;
     } else if (c.status === 'rechazada') {
       panel = `<div class="alert danger"><b>Solicitud no aprobada.</b> ${esc(c.history.at(-1)?.note || '')}</div>`;
     } else if (c.status === 'aprobada' && isClient) {
       panel = `
-        ${compensated ? `<div class="alert danger"><b>El desembolso fue rechazado por el banco.</b> ${esc(c.history.at(-1).note)}</div>` : '<div class="alert ok"><b>¡Crédito aprobado!</b> Revisa las condiciones y firma electrónicamente.</div>'}
+        ${compensated ? `<div class="alert danger"><b>El desembolso fue rechazado por el banco.</b> ${esc(c.history.at(-1).note.replace(/^Compensación: /, ''))}</div>` : '<div class="alert ok"><b>¡Crédito aprobado!</b> Revisa las condiciones y firma electrónicamente.</div>'}
         ${compensated ? `
           <form id="account-form" class="card" style="margin-top:12px">
             <h3>Actualizar cuenta destino</h3>
@@ -615,7 +614,7 @@ async function viewCredit(id) {
     } else if (c.status === 'aprobada') {
       panel = `<div class="alert ok">Aprobado. Esperando la firma electrónica del cliente.</div>`;
     } else if (c.status === 'formalizada') {
-      panel = `<div class="alert info"><span class="spinner"></span> Contrato firmado. El servicio de Desembolso está transfiriendo el dinero (evento <code>credit.formalized</code>)…</div>`;
+      panel = `<div class="alert info"><span class="spinner"></span> Contrato firmado. Estamos transfiriendo el dinero a tu cuenta…</div>`;
     } else if (c.status === 'desembolsada' || c.status === 'pagada') {
       panel = `
         <div class="grid-3">
@@ -692,9 +691,9 @@ async function viewProfile() {
   const c = await api('GET', '/customers/me');
   if (stale(seq)) return;
   main.innerHTML = `
-    <div class="page-head"><div><h1>Mi perfil</h1><p>Servicio de Clientes: fuente única de tus datos para todos los canales y procesos.</p></div></div>
+    <div class="page-head"><div><h1>Mi perfil</h1><p>Tus datos personales y de contacto.</p></div></div>
     <div class="grid-2">
-      <div class="card"><h3>Datos del registro maestro</h3>
+      <div class="card"><h3>Datos personales</h3>
         <dl class="kv"><dt>Nombre</dt><dd>${esc(c.firstName)} ${esc(c.lastName)}</dd><dt>Documento</dt><dd>${esc(c.documentType)} ${esc(c.documentNumber)}</dd>
         <dt>Correo</dt><dd>${esc(c.email)}</dd><dt>Nacimiento</dt><dd>${dateOnly(c.birthDate)}</dd><dt>Estado KYC</dt><dd>${c.kyc.status === 'verificado' ? '<span class="chip ok">Verificado</span>' : '<span class="chip danger">Rechazado</span>'}</dd>
         <dt>Prueba de vida</dt><dd>${c.kyc.livenessVerified ? 'Superada' : '—'}</dd><dt>SARLAFT</dt><dd>${esc(c.kyc.sarlaft.replace('_', ' '))}</dd><dt>Autorización de datos</dt><dd>${dateTime(c.consent.at)}</dd></dl>
@@ -704,7 +703,6 @@ async function viewProfile() {
         <div class="field"><label>Ciudad</label><input name="city" value="${esc(c.city)}"></div>
         <div class="field"><label>Dirección</label><input name="address" value="${esc(c.address)}"></div>
         <button class="btn">Guardar cambios</button>
-        <p class="muted" style="margin-top:10px"><small>Al guardar se publica <code>customer.updated</code>: los demás servicios consultan siempre este registro, nadie guarda una copia.</small></p>
       </form>
     </div>`;
   $('#profile-form').addEventListener('submit', async (e) => {
@@ -804,7 +802,7 @@ async function viewCustomers() {
       : '<div class="empty">No hay clientes que coincidan</div>';
   };
   main.innerHTML = `
-    <div class="page-head"><div><h1>Clientes</h1><p>Registro maestro único (servicio de Clientes). ${state.user.role === 'analista' ? 'Como analista, ve los datos sensibles enmascarados.' : ''}</p></div>
+    <div class="page-head"><div><h1>Clientes</h1><p>Base única de clientes de FinanTech. ${state.user.role === 'analista' ? 'Como analista, ve los datos sensibles enmascarados.' : ''}</p></div>
       <input id="customer-q" type="search" placeholder="Buscar por nombre, documento o correo" style="max-width:320px"></div>
     <div class="card" id="customers"></div>`;
   $('#customer-q').addEventListener('input', debounce(load, 250));
@@ -909,65 +907,6 @@ async function viewAudit() {
     <div class="card" id="audit"></div>`;
   await load();
   poll(load, 4000);
-}
-
-// ---------------------------------------------------------------- arquitectura
-async function viewArchitecture() {
-  const node = (id, title, text) => `<div class="node"><b><span class="health" data-svc="${id}"></span>${esc(title)}</b><small>${esc(text)}</small></div>`;
-  main.innerHTML = `
-    <div class="page-head"><div><h1>Arquitectura objetivo (TO-BE)</h1><p>Modelo de cinco capas del taller de Arquitectura Empresarial, en ejecución. Los indicadores muestran el estado real de cada componente.</p></div></div>
-    <div class="arch">
-      <div class="layer"><div class="layer-name">1. Canales<small>Experiencia unificada</small></div><div class="layer-body">
-        ${node('gateway', 'Portal web', 'Mismo cliente, mismos servicios')}${node('gateway', 'App móvil', 'Use el selector Web / App móvil')}${node('', 'Nuevos canales', 'Aliados, chatbot, marketplace — sin rehacer lógica')}</div></div>
-      <div class="arrow">▼ HTTPS + token JWT</div>
-      <div class="layer"><div class="layer-name">2. API Gateway<small>Punto único de entrada</small></div><div class="layer-body">
-        ${node('gateway', 'Autenticación', 'Valida JWT en cada solicitud')}${node('gateway', 'Autorización RBAC', 'cliente · analista · admin')}${node('gateway', 'Límites de uso', 'Por IP y por inicio de sesión')}${node('gateway', 'Auditoría', 'Bitácora encadenada por hash')}</div></div>
-      <div class="arrow">▼ enrutamiento (confianza cero: cada servicio vuelve a validar el token)</div>
-      <div class="layer"><div class="layer-name">3. Microservicios<small>Cada uno dueño de su dominio</small></div><div class="layer-body">
-        ${node('identity', 'Identidad y acceso', 'Credenciales, MFA, dispositivos, step-up')}${node('customers', 'Clientes', 'Registro maestro, KYC, SARLAFT')}${node('credits', 'Créditos', 'Solicitudes, contratos, amortización')}
-        ${node('evaluation', 'Evaluación', 'Reglas + scoring, decisión trazable')}${node('disbursement', 'Desembolso y pagos', 'ACH / PSE simulados')}${node('accounting', 'Contabilidad', 'Partida doble automática')}${node('notifications', 'Notificaciones', 'Correo, SMS, push')}</div></div>
-      <div class="arrow">▼▲ publicar / suscribir</div>
-      <div class="layer"><div class="layer-name">4. Bus de eventos<small>Desacoplamiento</small></div><div class="layer-body">
-        ${node('bus', 'Event bus', 'Entrega ordenada con reintentos')}${node('bus', 'Outbox', 'Ningún evento se pierde si el bus cae')}${node('bus', 'Idempotencia', 'Consumo único por id de evento')}${node('credits', 'Saga', 'Compensación ante desembolso fallido')}</div></div>
-      <div class="arrow">▼</div>
-      <div class="layer"><div class="layer-name">5. Datos<small>Una fuente por dominio</small></div><div class="layer-body">
-        ${node('customers', 'Base por servicio', 'data/<servicio>.json — sin base compartida')}${node('customers', 'Gestión de datos maestros', 'Un único registro por documento')}${node('analytics', 'Bodega analítica', 'Consume todo el flujo de eventos')}</div></div>
-    </div>
-    <div class="grid-2" style="margin-top:20px">
-      <div class="card"><h3>Flujo integral del crédito</h3>
-        <ol style="margin:0;padding-left:20px">
-          <li><b>Cliente y canal</b> — web o app móvil, mismos endpoints del gateway.</li>
-          <li><b>Autenticación</b> — Identidad valida contraseña + OTP y emite el token.</li>
-          <li><b>Solicitud</b> — Créditos consulta al cliente por API y publica <code>credit.requested</code>.</li>
-          <li><b>Evaluación</b> — consume el evento, aplica reglas y publica <code>evaluation.completed</code>.</li>
-          <li><b>Aprobación</b> — automática o derivada a analista.</li>
-          <li><b>Formalización</b> — firma electrónica (OTP reforzado si &gt; $10M) → <code>credit.formalized</code>.</li>
-          <li><b>Desembolso</b> — transfiere y publica <code>disbursement.completed</code>.</li>
-          <li><b>Contabilidad</b> — genera el asiento de partida doble al instante.</li>
-          <li><b>Notificación</b> — informa al cliente en cada hito.</li>
-          <li><b>Analítica</b> — la bodega consume todo el flujo para el tablero.</li>
-        </ol></div>
-      <div class="card"><h3>Cómo probarlo</h3>
-        <ol style="margin:0;padding-left:20px">
-          <li>Cree una cuenta de cliente y complete la vinculación.</li>
-          <li>Solicite un crédito y observe la evaluación en vivo.</li>
-          <li>Firme y vea el desembolso y la cuota en el plan.</li>
-          <li>Ingrese como <code>admin@finantech.co</code> para ver el tablero, la contabilidad, el bus y la auditoría.</li>
-          <li>Use documentos terminados en 5 para practicar la revisión manual con <code>analista@finantech.co</code>.</li>
-        </ol></div>
-    </div>`;
-  const update = async () => {
-    const h = await api('GET', '/health');
-    const up = Object.fromEntries(h.services.map((s) => [s.service, s.status === 'UP']));
-    up.gateway = true;
-    $$('.health[data-svc]').forEach((el) => {
-      const svc = el.dataset.svc;
-      if (!svc) return;
-      el.className = `health ${up[svc] ? 'up' : 'down'}`;
-    });
-  };
-  await update();
-  poll(update, 5000);
 }
 
 // ---------------------------------------------------------------- arranque
