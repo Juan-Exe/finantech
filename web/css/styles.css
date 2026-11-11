@@ -23,23 +23,24 @@
   --line: #e4e9f0;
   --line-strong: #cfd8e3;
 
-  /* Acentos institucionales (paleta conservada) */
+  /* Azul institucional: una sola familia de color para toda la interfaz. */
   --primary: #0b3d91;
   --primary-2: #1453c4;
-  --accent: #00806e;
+  --accent: #0b3d91;
 
-  /* Estado: solo tinta, sin relleno */
-  --ok: #047857;
-  --warn: #9a5b00;
-  --danger: #c01c28;
-  --info: #1453c4;
+  /* Estados en escala de azul: alto, medio y bajo.
+     Cada escalón cambia texto Y fondo, para que se distingan de un vistazo. */
+  --ok: #ffffff;        /* azul alto  — vigente, aprobado: azul sólido */
+  --info: #14448f;      /* azul medio — informativo */
+  --warn: #14448f;      /* azul medio — requiere atención */
+  --danger: #42659c;    /* azul bajo  — rechazado, fallido */
 
-  /* Tono de fondo mínimo para estados, cuando hace falta */
-  --ok-soft: #ecfdf5;
-  --warn-soft: #fffbeb;
-  --danger-soft: #fef2f2;
-  --info-soft: #eff6ff;
-  --accent-soft: #e6f4f1;
+  /* Fondos: del azul sólido al azul apenas insinuado. */
+  --ok-soft: #0b3d91;
+  --info-soft: #e3ebf8;
+  --warn-soft: #ccdaf0;
+  --danger-soft: #f0f4fa;
+  --accent-soft: #e3ebf8;
 
   /* Escala tipográfica */
   --step--1: .8125rem;
@@ -89,10 +90,9 @@ p { margin: 0 0 .7rem; }
 small, .muted { color: var(--muted); }
 small { font-size: var(--step--1); }
 
-code, .mono {
-  font-family: ui-monospace, "SF Mono", "Cascadia Code", "Segoe UI Mono", Consolas, monospace;
-  font-size: .9em;
-}
+/* Los identificadores y hashes usan la misma fuente: se distinguen por
+   cifras tabulares y un tono más tenue, no por otra tipografía. */
+code, .mono { font-variant-numeric: tabular-nums; letter-spacing: .01em; color: var(--ink-2); }
 
 :focus-visible { outline: 2px solid var(--primary-2); outline-offset: 2px; border-radius: 3px; }
 
@@ -204,11 +204,12 @@ code, .mono {
 .btn:hover { background: var(--primary-2); }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
 .btn.accent { background: var(--accent); color: #fff; }
-.btn.accent:hover { background: #00695a; }
+.btn.accent:hover { background: var(--primary-2); }
 .btn.ghost { background: transparent; color: var(--primary); border-color: var(--line-strong); }
 .btn.ghost:hover { background: var(--surface-2); border-color: var(--muted); }
-.btn.danger { background: var(--danger); }
-.btn.danger:hover { background: #a01722; }
+/* Rechazar es una acción secundaria: contorno, no relleno. */
+.btn.danger { background: transparent; color: var(--primary); border-color: var(--line-strong); }
+.btn.danger:hover { background: var(--surface-2); border-color: var(--muted); }
 .btn.sm { padding: 6px 13px; font-size: var(--step--1); }
 .btn.block { width: 100%; }
 
@@ -233,7 +234,7 @@ input[type="range"] { padding: 0; accent-color: var(--primary); border: 0; }
 .check { display: flex; align-items: flex-start; gap: 6px; font-weight: 400; font-size: var(--step-0); }
 .otp-input {
   font-size: 1.5rem; letter-spacing: .45em; text-align: center; font-weight: 500;
-  font-family: ui-monospace, "SF Mono", Consolas, monospace; padding: 14px 12px;
+  font-variant-numeric: tabular-nums; padding: 14px 12px;
 }
 
 /* ---------- Etiquetas de estado: tinta sobre fondo mínimo ---------- */
@@ -243,11 +244,19 @@ input[type="range"] { padding: 0; accent-color: var(--primary); border: 0; }
   background: var(--surface-2); color: var(--ink-2);
   border: 1px solid var(--line); white-space: nowrap;
 }
-.chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
-.chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
-.chip.danger { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+/* El nivel se lee por intensidad del azul y, como refuerzo, por el peso. */
+.chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; font-weight: 600; }
+.chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; font-weight: 500; }
+.chip.danger { background: var(--danger-soft); color: var(--danger); border-color: #c3d2e8; font-weight: 500; }
 .chip.info { background: var(--info-soft); color: var(--info); border-color: transparent; }
-.chip.accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.chip.accent { background: var(--accent-soft); color: #14448f; border-color: transparent; }
+
+/* Bandas de riesgo: cinco escalones de azul, de mayor a menor calidad. */
+.chip.band-a { background: #0b3d91; color: #fff; border-color: transparent; font-weight: 600; }
+.chip.band-b { background: #325fb0; color: #fff; border-color: transparent; font-weight: 500; }
+.chip.band-c { background: #a8c0e4; color: #11336e; border-color: transparent; font-weight: 500; }
+.chip.band-d { background: #d4e0f2; color: #1b4a93; border-color: transparent; }
+.chip.band-e { background: #f0f4fa; color: #42659c; border-color: #c3d2e8; }
 
 /* ---------- Avisos: barra lateral, sin caja de color completa ---------- */
 .alert {
@@ -381,8 +390,10 @@ tr.clickable:hover td { background: var(--surface-2); }
   background: var(--ink); color: #fff; padding: 11px 16px; border-radius: var(--radius);
   max-width: 360px; font-size: var(--step-0); animation: rise .18s ease-out;
 }
-.toast.error { background: var(--danger); }
-.toast.ok { background: var(--ok); }
+/* Sobre fondo oscuro el azul bajo no contrasta: el aviso mantiene la tinta
+   y marca el nivel con una línea de color a la izquierda. */
+.toast.error { background: var(--ink); border-left: 3px solid var(--danger); }
+.toast.ok { background: var(--ink); border-left: 3px solid var(--primary-2); }
 @keyframes rise { from { transform: translateY(8px); opacity: 0; } }
 
 /* ---------- Inicio de sesión ---------- */

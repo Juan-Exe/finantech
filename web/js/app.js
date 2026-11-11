@@ -100,14 +100,16 @@ async function meta() {
   return state.meta;
 }
 
+// La intensidad del azul sigue el avance del crédito: cuanto más firme el
+// estado, más sólido el color. El rechazo es el escalón más bajo.
 const STATUS = {
   radicada: { label: 'Radicada', cls: 'info' },
   en_evaluacion: { label: 'En evaluación', cls: 'info' },
   revision_manual: { label: 'Revisión manual', cls: 'warn' },
-  aprobada: { label: 'Aprobada', cls: 'ok' },
+  aprobada: { label: 'Aprobada', cls: 'warn' },
   rechazada: { label: 'Rechazada', cls: 'danger' },
   formalizada: { label: 'Desembolso en proceso', cls: 'info' },
-  desembolsada: { label: 'Vigente', cls: 'accent' },
+  desembolsada: { label: 'Vigente', cls: 'ok' },
   pagada: { label: 'Pagada', cls: 'ok' },
 };
 const chip = (status) => `<span class="chip ${STATUS[status]?.cls || ''}">${esc(STATUS[status]?.label || status)}</span>`;
@@ -839,7 +841,7 @@ async function viewDashboard() {
 
 // ---------------------------------------------------------------- motor de riesgo (Python)
 // Scoring con modelo entrenado y métricas recalculadas en vivo desde el bus de eventos.
-const BANDS = { A: 'ok', B: 'ok', C: 'warn', D: 'warn', E: 'danger' };
+const BANDS = { A: 'band-a', B: 'band-b', C: 'band-c', D: 'band-d', E: 'band-e' };
 const FEATURE_LABELS = {
   ratio_cuota_ingreso: 'Cuota / ingreso',
   ratio_gasto_ingreso: 'Gastos / ingreso',
@@ -892,7 +894,7 @@ async function viewRisk() {
             <span class="chip">Precisión ${showPct(t.accuracy)}</span>
             <span class="chip">Log-loss ${num(t.logLoss, 4)}</span>
             <span class="chip">${t.samples || 0} muestras</span>
-            <span class="chip ${t.observedSamples ? 'ok' : ''}">${t.observedSamples || 0} desenlaces reales del bus</span>
+            <span class="chip">${t.observedSamples || 0} ${t.observedSamples === 1 ? 'desenlace real' : 'desenlaces reales'} del bus</span>
           </div>
           <h4 style="margin:14px 0 4px">Peso de cada variable</h4>
           <p class="muted"><small>Coeficientes aprendidos sobre variables estandarizadas. Positivo = aumenta el riesgo.</small></p>
