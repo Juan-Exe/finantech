@@ -11,7 +11,7 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const money = (n) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(n) || 0);
 const pct = (n, d = 1) => `${(Number(n) * 100).toFixed(d)}%`;
 const dateTime = (s) => (s ? new Date(s).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : '—');
-const timeOnly = (s) => (s ? new Date(s).toLocaleTimeString('es-CO') : '—');
+const timeOnly = (s) => (s ? new Date(s).toLocaleTimeString('es-CO').replace(/ /g, ' ') : '—');
 const dateOnly = (s) => (s ? new Date(`${s}T12:00:00`).toLocaleDateString('es-CO', { dateStyle: 'medium' }) : '—');
 const formData = (form) => Object.fromEntries(new FormData(form).entries());
 const debounce = (fn, ms) => {
@@ -202,7 +202,7 @@ function otpForm(challenge, { title, text, submitLabel }) {
     <div class="card" id="otp-card" style="max-width:440px;margin:0 auto">
       <h2>${esc(title)}</h2>
       <p class="muted">${esc(text)}</p>
-      ${challenge.demoCode ? `<div class="alert info">📱 <b>Modo demostración:</b> código enviado por ${esc(challenge.channel)}: <b class="mono">${esc(challenge.demoCode)}</b></div>` : ''}
+      ${challenge.demoCode ? `<div class="alert info"><b>Modo demostración:</b> código enviado por ${esc(challenge.channel)}: <b class="mono">${esc(challenge.demoCode)}</b></div>` : ''}
       <form id="otp-form" autocomplete="off" style="margin-top:14px">
         <div class="field"><input class="otp-input" name="code" inputmode="numeric" maxlength="6" required autofocus placeholder="••••••"></div>
         <button class="btn block">${esc(submitLabel)}</button>
@@ -245,9 +245,9 @@ async function login(email, password, container) {
 }
 
 const QUICK_ACCESS = [
-  { email: 'maria.gomez@correo.co', password: 'Cliente2026!', icon: '👤', title: 'Cliente', text: 'María Gómez · crédito vigente' },
-  { email: 'analista@finantech.co', password: 'Analista2026!', icon: '🧾', title: 'Analista de crédito', text: 'Revisión manual de solicitudes' },
-  { email: 'admin@finantech.co', password: 'Admin2026!', icon: '📊', title: 'Gerencia', text: 'Tablero, contabilidad y auditoría' },
+  { email: 'maria.gomez@correo.co', password: 'Cliente2026!', icon: '01', title: 'Cliente', text: 'María Gómez · crédito vigente' },
+  { email: 'analista@finantech.co', password: 'Analista2026!', icon: '02', title: 'Analista de crédito', text: 'Revisión manual de solicitudes' },
+  { email: 'admin@finantech.co', password: 'Admin2026!', icon: '03', title: 'Gerencia', text: 'Tablero, contabilidad y auditoría' },
 ];
 
 function viewLogin() {
@@ -349,7 +349,7 @@ function viewOnboarding() {
           <h3>Validación biométrica</h3>
           <p class="muted">Prueba de vida para confirmar que eres tú (simulada en el prototipo).</p>
           <div class="liveness">
-            <div class="face" id="face">🙂</div>
+            <div class="face" id="face"></div>
             <div style="flex:1"><div id="live-text">Ubica tu rostro frente a la cámara.</div>
             <button type="button" class="btn sm accent" id="live-btn" style="margin-top:8px">Iniciar prueba de vida</button></div>
           </div>
@@ -370,7 +370,7 @@ function viewOnboarding() {
     $('#live-btn').disabled = true;
     setTimeout(() => {
       face.className = 'face ok';
-      face.textContent = '✔';
+      face.textContent = 'OK';
       $('#live-text').innerHTML = '<b>Prueba de vida superada.</b> Rostro coincide con el documento.';
       liveness = true;
     }, 1800);
@@ -434,8 +434,8 @@ async function viewClientHome() {
     $('#notifs').innerHTML = notificationsHtml(notifications);
   };
   main.innerHTML = `
-    <div class="page-head"><div><h1>Hola, ${esc(customer.firstName)} 👋</h1><p>Cliente verificado · ${esc(customer.city)}</p></div>
-      <a class="btn accent" href="#/solicitar">+ Nueva solicitud</a></div>
+    <div class="page-head"><div><h1>Hola, ${esc(customer.firstName)}</h1><p>Cliente verificado · ${esc(customer.city)}</p></div>
+      <a class="btn accent" href="#/solicitar">Solicitar un crédito</a></div>
     <div class="grid-3">
       <div class="card"><h3>Resumen</h3><div id="client-summary"></div></div>
       <div class="card" style="grid-column: span 2"><div class="card-title"><h3>Notificaciones</h3><button class="btn sm ghost" id="mark-read">Marcar como leídas</button></div><div id="notifs"></div></div>
@@ -528,7 +528,7 @@ function progressHtml(status) {
   return `<div class="progress">${FLOW.map((s, i) => {
     let cls = i < current ? 'done' : i === current ? 'current' : '';
     if (status === 'rechazada' && i === 2) cls = 'fail';
-    return `<div class="p-step ${cls}"><div class="dot">${cls === 'done' ? '✓' : cls === 'fail' ? '✕' : i + 1}</div>${s.label}</div>`;
+    return `<div class="p-step ${cls}"><div class="dot"></div>${s.label}</div>`;
   }).join('')}</div>`;
 }
 
@@ -596,8 +596,8 @@ async function viewCredit(id) {
           <dt>Cuota fija</dt><dd>${money(c.installment)}</dd><dt>Cuenta destino</dt><dd>${esc(c.disbursementAccount.bank)} · ${esc(c.disbursementAccount.accountNumber)}</dd></dl>
           <form id="sign-form" style="margin-top:12px">
             <label class="check"><input type="checkbox" name="accept" required> Acepto las condiciones del contrato, el plan de pagos y autorizo el débito de las cuotas.</label>
-            ${c.requiresStepUp ? '<p class="muted" style="margin-top:6px"><small>🔐 Este monto requiere verificación reforzada con OTP.</small></p>' : ''}
-            <button class="btn accent" style="margin-top:10px">✍ Firmar electrónicamente</button>
+            ${c.requiresStepUp ? '<p class="muted" style="margin-top:6px"><small>Este monto requiere verificación reforzada con OTP.</small></p>' : ''}
+            <button class="btn accent" style="margin-top:10px">Firmar electrónicamente</button>
           </form>
         </div>`;
     } else if (c.status === 'aprobada') {
@@ -616,7 +616,7 @@ async function viewCredit(id) {
 
     const ev = c.evaluation;
     main.innerHTML = `
-      <div class="page-head"><div><a href="${isClient ? '#/inicio' : '#/creditos'}">← Volver</a><h1 style="margin-top:6px">${esc(c.productName)} · ${money(c.amount)}</h1>
+      <div class="page-head"><div><a href="${isClient ? '#/inicio' : '#/creditos'}">Volver</a><h1 style="margin-top:6px">${esc(c.productName)} · ${money(c.amount)}</h1>
         <p>${esc(c.number)} · radicado ${dateTime(c.createdAt)} por ${c.channel === 'app-movil' ? 'app móvil' : 'portal web'}</p></div>${chip(c.status)}</div>
       <div class="card">${progressHtml(c.status)}</div>
       <div style="margin-top:16px">${panel}</div>
@@ -730,7 +730,7 @@ async function viewReview() {
           </form></div>`;
           })
           .join('')
-      : '<div class="card empty">🎉 No hay solicitudes pendientes de revisión manual.</div>';
+      : '<div class="card empty">No hay solicitudes pendientes de revisión manual.</div>';
     $$('.review-form').forEach((form) =>
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -956,7 +956,7 @@ async function viewAccounting() {
   const load = async () => {
     const [tb, entries] = await Promise.all([api('GET', '/accounting/trial-balance'), api('GET', '/accounting/entries?limit=40')]);
     $('#tb').innerHTML = `
-      <div class="card-title"><h3>Balance de prueba</h3>${tb.balanced ? '<span class="chip ok">✓ Cuadrado — partida doble</span>' : '<span class="chip danger">Descuadrado</span>'}</div>
+      <div class="card-title"><h3>Balance de prueba</h3>${tb.balanced ? '<span class="chip ok">Cuadrado — partida doble</span>' : '<span class="chip danger">Descuadrado</span>'}</div>
       <div class="table-wrap"><table><thead><tr><th>Cuenta</th><th>Nombre</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">Saldo</th></tr></thead><tbody>
       ${tb.rows.map((r) => `<tr><td class="mono">${r.account}</td><td>${esc(r.name)}</td><td class="num">${money(r.debit)}</td><td class="num">${money(r.credit)}</td><td class="num"><b>${money(r.balance)}</b></td></tr>`).join('')}
       <tr><td></td><td><b>Totales</b></td><td class="num"><b>${money(tb.totalDebit)}</b></td><td class="num"><b>${money(tb.totalCredit)}</b></td><td></td></tr></tbody></table></div>`;
@@ -999,10 +999,10 @@ async function viewAudit() {
   const load = async () => {
     const a = await api('GET', '/audit?limit=200');
     $('#integrity').innerHTML = a.integrity.valid
-      ? `<span class="chip ok">✓ Cadena íntegra · ${a.total} registros</span>`
-      : `<span class="chip danger">✕ Cadena alterada en el registro ${a.integrity.brokenAt}</span>`;
+      ? `<span class="chip ok">Cadena íntegra · ${a.total} registros</span>`
+      : `<span class="chip danger">Cadena alterada en el registro ${a.integrity.brokenAt}</span>`;
     $('#audit').innerHTML = `<div class="table-wrap"><table><thead><tr><th>#</th><th>Hora</th><th>Usuario</th><th>Rol</th><th>Canal</th><th>Operación</th><th>Estado</th><th class="num">ms</th><th>Hash</th></tr></thead><tbody>
-      ${a.entries.map((e) => `<tr><td>${e.seq}</td><td class="mono">${timeOnly(e.at)}</td><td>${esc(e.user)}</td><td>${esc(e.role)}</td><td>${esc(e.channel)}</td><td class="mono">${esc(e.method)} ${esc(e.path)}</td>
+      ${a.entries.map((e) => `<tr><td>${e.seq}</td><td class="mono">${timeOnly(e.at)}</td><td>${esc(e.user)}</td><td>${esc(e.role)}</td><td class="nowrap">${esc(e.channel)}</td><td class="mono">${esc(e.method)} ${esc(e.path)}</td>
         <td><span class="chip ${e.status < 300 ? 'ok' : e.status < 500 ? 'warn' : 'danger'}">${e.status}</span></td><td class="num">${e.ms}</td><td class="mono" title="${esc(e.hash)}">${esc(e.hash.slice(0, 10))}</td></tr>`).join('')}
       </tbody></table></div>`;
   };
