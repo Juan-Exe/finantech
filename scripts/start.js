@@ -18,9 +18,36 @@ const COMPONENTS = [
   { name: 'gateway', entry: 'gateway/index.js', color: 97 },
 ];
 
+// Componente opcional en Python: solo se levanta si hay un intérprete disponible.
+const PYTHON_COMPONENT = { name: 'risk-engine', entry: 'services/risk-engine/index.py', color: 95 };
+
+function findPython() {
+  if (process.env.RISK_ENGINE === 'false') return null;
+  const { spawnSync } = require('node:child_process');
+  const candidates = process.env.PYTHON ? [process.env.PYTHON] : ['python', 'python3', 'py'];
+  for (const bin of candidates) {
+    try {
+      // Requiere NumPy: el motor de riesgo no arranca sin él.
+      const probe = spawnSync(bin, ['-c', 'import numpy, sys; print(sys.version_info[0])'], {
+        encoding: 'utf8',
+        timeout: 15000,
+        windowsHide: true,
+      });
+      if (probe.status === 0 && probe.stdout.trim().startsWith('3')) return bin;
+    } catch {
+      // candidato no disponible: se prueba el siguiente
+    }
+  }
+  return null;
+}
+
 function startAll({ env = {}, silent = false } = {}) {
-  const children = COMPONENTS.map(({ name, entry, color }) => {
-    const child = spawn(process.execPath, [path.join(ROOT, entry)], {
+  const python = findPython();
+  const components = python ? [...COMPONENTS, PYTHON_COMPONENT] : COMPONENTS;
+  const children = components.map(({ name, entry, color }) => {
+    const isPython = entry.endsWith('.py');
+    const command = isPython ? python : process.execPath;
+    const child = spawn(command, [path.join(ROOT, entry)], {
       cwd: ROOT,
       env: { ...process.env, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -40,6 +67,7 @@ function startAll({ env = {}, silent = false } = {}) {
     child.on('exit', (code) => {
       if (!child.stopping && !silent) console.log(`${prefix}terminó con código ${code}`);
     });
+    child.optional = isPython;
     return child;
   });
   const stop = () => {
@@ -64,7 +92,7 @@ if (require.main === module) {
   setTimeout(() => (booting = false), 5000);
   for (const child of children) {
     child.on('exit', (code) => {
-      if (booting && code) {
+      if (booting && code && !child.optional) {
         booting = false;
         console.error('\nNo se pudo iniciar la plataforma. Revise el mensaje anterior.');
         stop();
@@ -94,7 +122,7 @@ if (require.main === module) {
     for (let i = 0; i < 60; i++) {
       try {
         const h = await (await fetch(`${base}/api/health`)).json();
-        if (h.services.every((s) => s.status === 'UP')) break;
+        if (h.services.every((s) => s.status === 'UP' || s.optional)) break;
       } catch {
         // aún arrancando
       }

@@ -4,3 +4,7 @@ data/
 *.log
 .DS_Store
 ~$*.docx
+
+# Python (motor de riesgo)
+__pycache__/
+*.pyc

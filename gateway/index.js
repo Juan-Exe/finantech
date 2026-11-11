@@ -26,6 +26,7 @@ const ROUTES = [
   { prefix: '/api/notifications', target: 'notifications', rewrite: '/notifications' },
   { prefix: '/api/analytics', target: 'analytics', rewrite: '', roles: STAFF_ROLES },
   { prefix: '/api/bus', target: 'bus', rewrite: '', roles: ['admin'] },
+  { prefix: '/api/risk', target: 'risk', rewrite: '', roles: STAFF_ROLES },
 ];
 
 const PUBLIC = new Set([
@@ -38,6 +39,9 @@ const PUBLIC = new Set([
 ]);
 
 const SERVICES = ['identity', 'customers', 'credits', 'evaluation', 'disbursement', 'accounting', 'notifications', 'analytics', 'bus'];
+// Servicios opcionales: se reportan en /api/health pero su ausencia no degrada la plataforma
+// (el motor de riesgo en Python solo corre si Python está instalado).
+const OPTIONAL_SERVICES = ['risk'];
 
 // ---------- Auditoría inmutable (cadena de hashes) ----------
 const audit = createStore('gateway-audit', { entries: [] });
@@ -99,12 +103,14 @@ function serveStatic(pathname, res) {
 
 async function health() {
   const results = await Promise.all(
-    SERVICES.map(async (name) => {
+    [...SERVICES, ...OPTIONAL_SERVICES].map(async (name) => {
       const started = Date.now();
       try {
         const r = await fetch(`${urls[name]}/health`, { signal: AbortSignal.timeout(1500) });
-        return { service: name, status: r.ok ? 'UP' : 'DOWN', latencyMs: Date.now() - started };
+        return { service: name, status: r.ok ? 'UP' : 'DOWN', latencyMs: Date.now() - started, optional: OPTIONAL_SERVICES.includes(name) || undefined };
       } catch {
+        // Un servicio opcional ausente se reporta como OFF, no como caído.
+        if (OPTIONAL_SERVICES.includes(name)) return { service: name, status: 'OFF', latencyMs: null, optional: true };
         return { service: name, status: 'DOWN', latencyMs: null };
       }
     }),

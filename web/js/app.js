@@ -127,8 +127,8 @@ function poll(fn, ms) {
 const NAV = {
   anon: [['#/login', 'Ingresar'], ['#/registro', 'Crear cuenta']],
   cliente: [['#/inicio', 'Mis créditos'], ['#/solicitar', 'Solicitar'], ['#/perfil', 'Mi perfil']],
-  analista: [['#/revision', 'Revisión manual'], ['#/creditos', 'Créditos'], ['#/clientes', 'Clientes'], ['#/tablero', 'Tablero'], ['#/contabilidad', 'Contabilidad']],
-  admin: [['#/tablero', 'Tablero'], ['#/creditos', 'Créditos'], ['#/clientes', 'Clientes'], ['#/contabilidad', 'Contabilidad'], ['#/eventos', 'Bus de eventos'], ['#/auditoria', 'Auditoría']],
+  analista: [['#/revision', 'Revisión manual'], ['#/creditos', 'Créditos'], ['#/clientes', 'Clientes'], ['#/tablero', 'Tablero'], ['#/riesgo', 'Riesgo'], ['#/contabilidad', 'Contabilidad']],
+  admin: [['#/tablero', 'Tablero'], ['#/creditos', 'Créditos'], ['#/clientes', 'Clientes'], ['#/riesgo', 'Riesgo'], ['#/contabilidad', 'Contabilidad'], ['#/eventos', 'Bus de eventos'], ['#/auditoria', 'Auditoría']],
 };
 const HOME = { cliente: '#/inicio', analista: '#/revision', admin: '#/tablero' };
 
@@ -156,6 +156,7 @@ const ROUTES = {
   creditos: { view: viewAllCredits, roles: ['analista', 'admin'] },
   clientes: { view: viewCustomers, roles: ['analista', 'admin'] },
   tablero: { view: viewDashboard, roles: ['analista', 'admin'] },
+  riesgo: { view: viewRisk, roles: ['analista', 'admin'] },
   contabilidad: { view: viewAccounting, roles: ['analista', 'admin'] },
   eventos: { view: viewEvents, roles: ['admin'] },
   auditoria: { view: viewAudit, roles: ['admin'] },
@@ -834,6 +835,121 @@ async function viewDashboard() {
     </div>`;
   await load();
   poll(load, 3000);
+}
+
+// ---------------------------------------------------------------- motor de riesgo (Python)
+// Scoring con modelo entrenado y métricas recalculadas en vivo desde el bus de eventos.
+const BANDS = { A: 'ok', B: 'ok', C: 'warn', D: 'warn', E: 'danger' };
+const FEATURE_LABELS = {
+  ratio_cuota_ingreso: 'Cuota / ingreso',
+  ratio_gasto_ingreso: 'Gastos / ingreso',
+  log_monto: 'Monto (log)',
+  plazo_norm: 'Plazo',
+  ingreso_norm: 'Ingreso',
+  reportes_negativos: 'Reportes negativos',
+};
+const num = (v, d = 3) => (typeof v === 'number' && isFinite(v) ? v.toFixed(d) : '—');
+
+async function viewRisk() {
+  main.innerHTML = `
+    <div class="page-head"><div><h1>Motor de riesgo</h1><p>Servicio en Python suscrito al bus: entrena un modelo de regresión logística y recalcula la cartera con cada evento.</p></div><span class="chip accent">Datos en vivo</span></div>
+    <div id="risk-body"><div class="loading"><span class="spinner"></span> Cargando…</div></div>`;
+
+  const load = async () => {
+    let m;
+    try {
+      m = await api('GET', '/risk/metrics');
+    } catch (err) {
+      // El motor es opcional: si no está corriendo se explica cómo activarlo.
+      clearInterval(poller);
+      $('#risk-body').innerHTML = `
+        <div class="alert warn"><b>El motor de riesgo no está disponible.</b><br>
+        Es un componente opcional escrito en Python. Para activarlo instale Python 3 con NumPy
+        (<code>pip install numpy</code>) y vuelva a ejecutar <code>npm start</code>.</div>
+        <p class="muted"><small>Detalle: ${esc(err.message)}</small></p>`;
+      return;
+    }
+
+    const p = m.portfolio;
+    const t = m.training || {};
+    const bands = m.distribution.bands || {};
+    const recs = m.distribution.recommendations || {};
+    const totalBands = Object.values(bands).reduce((a, b) => a + b, 0) || 1;
+    const showPct = (v, d = 1) => (v === null || v === undefined ? '—' : pct(v, d));
+
+    $('#risk-body').innerHTML = `
+      <div class="grid-4">
+        <div class="card kpi"><div class="label">Solicitudes puntuadas</div><div class="value">${p.scored}</div><div class="sub">${m.events.total} eventos consumidos</div></div>
+        <div class="card kpi"><div class="label">Exposición</div><div class="value">${money(p.exposure)}</div><div class="sub">Monto solicitado total</div></div>
+        <div class="card kpi"><div class="label">PD promedio</div><div class="value">${showPct(p.avgProbabilityOfDefault)}</div><div class="sub">Mediana ${showPct(p.medianProbabilityOfDefault)} · p95 ${showPct(p.p95ProbabilityOfDefault)}</div></div>
+        <div class="card kpi"><div class="label">Pérdida esperada</div><div class="value">${money(p.expectedLoss)}</div><div class="sub">Σ PD × exposición</div></div>
+      </div>
+      <div class="grid-3" style="margin-top:16px">
+        <div class="card" style="grid-column: span 2"><h3>Modelo entrenado</h3>
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <span class="chip info">Regresión logística</span>
+            <span class="chip">AUC ${num(t.auc)}</span>
+            <span class="chip">Precisión ${showPct(t.accuracy)}</span>
+            <span class="chip">Log-loss ${num(t.logLoss, 4)}</span>
+            <span class="chip">${t.samples || 0} muestras</span>
+            <span class="chip ${t.observedSamples ? 'ok' : ''}">${t.observedSamples || 0} desenlaces reales del bus</span>
+          </div>
+          <h4 style="margin:14px 0 4px">Peso de cada variable</h4>
+          <p class="muted"><small>Coeficientes aprendidos sobre variables estandarizadas. Positivo = aumenta el riesgo.</small></p>
+          <div id="risk-weights"></div>
+          <div class="row" style="margin-top:12px"><button class="btn ghost" id="btn-retrain">Reentrenar con los datos observados</button></div>
+        </div>
+        <div class="card"><h3>Distribución por banda</h3><div id="risk-bands"></div>
+          <h4 style="margin:14px 0 6px">Recomendación</h4>
+          <div class="row" style="gap:6px;flex-wrap:wrap">${Object.entries(recs).map(([r, n]) => `<span class="chip ${r === 'aprobar' ? 'ok' : r === 'rechazar' ? 'danger' : 'warn'}">${esc(r.replace('_', ' '))}: ${n}</span>`).join('') || '<small class="muted">Sin datos</small>'}</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px"><h3>Solicitudes puntuadas por el modelo</h3><div id="risk-scores" class="table-wrap"></div></div>`;
+
+    const weights = t.weights || {};
+    const maxW = Math.max(0.0001, ...Object.values(weights).map((v) => Math.abs(v)));
+    $('#risk-weights').innerHTML = Object.entries(weights)
+      .sort((x, y) => Math.abs(y[1]) - Math.abs(x[1]))
+      .map(([k, v]) => `<div class="funnel-row"><span>${esc(FEATURE_LABELS[k] || k)}</span><div class="funnel-bar" style="width:${(Math.abs(v) / maxW) * 100}%"></div><b>${v >= 0 ? '+' : ''}${num(v)}</b></div>`)
+      .join('') || '<div class="empty">Sin datos</div>';
+
+    $('#risk-bands').innerHTML = ['A', 'B', 'C', 'D', 'E']
+      .map((b) => `<div class="funnel-row"><span><span class="chip ${BANDS[b]}">${b}</span></span><div class="funnel-bar" style="width:${((bands[b] || 0) / totalBands) * 100}%"></div><b>${bands[b] || 0}</b></div>`)
+      .join('');
+
+    const scores = await api('GET', '/risk/scores').catch(() => []);
+    $('#risk-scores').innerHTML = scores.length
+      ? `<table><thead><tr><th>Crédito</th><th>Producto</th><th class="num">Monto</th><th class="num">Score</th><th class="num">PD</th><th>Banda</th><th>Recomendación</th><th>Factor principal</th></tr></thead><tbody>
+        ${scores.map((r) => `<tr>
+          <td class="mono"><a href="#/credito/${esc(r.creditId)}">${esc(String(r.creditId).slice(0, 8))}</a></td>
+          <td>${esc(r.product || '—')}</td>
+          <td class="num">${money(r.amount)}</td>
+          <td class="num"><b>${r.score}</b></td>
+          <td class="num">${showPct(r.probabilityOfDefault, 2)}</td>
+          <td><span class="chip ${BANDS[r.band] || ''}">${esc(r.band)}</span></td>
+          <td>${esc(String(r.recommendation || '').replace('_', ' '))}</td>
+          <td><small>${esc(FEATURE_LABELS[r.topDrivers && r.topDrivers[0] && r.topDrivers[0].feature] || (r.topDrivers && r.topDrivers[0] && r.topDrivers[0].feature) || '—')}</small></td>
+        </tr>`).join('')}</tbody></table>`
+      : '<div class="empty">Aún no hay solicitudes puntuadas. Radique una solicitud para verla aquí.</div>';
+
+    const btn = $('#btn-retrain');
+    if (btn) btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = 'Reentrenando…';
+      try {
+        const r = await api('POST', '/risk/retrain', { reason: 'solicitado desde el tablero' });
+        toast(`Modelo reentrenado: ${r.samples} muestras · AUC ${num(r.auc)}`);
+        await load();
+      } catch (err) {
+        toast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Reentrenar con los datos observados';
+      }
+    });
+  };
+
+  await load();
+  poll(load, 5000);
 }
 
 async function viewAccounting() {

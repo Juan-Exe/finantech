@@ -22,6 +22,17 @@ Cliente → App/Web → Autenticación → Crédito → Evaluación → Aprobaci
 
 **No hay que instalar librerías**: el proyecto no tiene dependencias externas, así que no hace falta `npm install`.
 
+### Opcional: motor de riesgo en Python
+
+Hay un componente **opcional** escrito en Python que calcula el riesgo de cada solicitud con un modelo entrenado (ver la sección 10). La plataforma funciona perfectamente sin él.
+
+| Requisito | Cómo verificarlo |
+|---|---|
+| [Python](https://python.org) 3.10 o superior | `python --version` |
+| NumPy | `pip install numpy` |
+
+Si Python y NumPy están disponibles, `npm start` levanta el motor automáticamente. Si no lo están, la plataforma arranca igual y la pantalla **Riesgo** explica cómo activarlo.
+
 ## 2. Ejecutarlo paso a paso
 
 ### Windows (PowerShell o CMD)
@@ -63,12 +74,14 @@ En la terminal donde corre, presione **Ctrl + C**. Se detienen todos los servici
 
 | Comando | Qué hace |
 |---|---|
-| `npm start` | Levanta el bus de eventos, los 8 microservicios y el API Gateway. |
+| `npm start` | Levanta el bus de eventos, los 8 microservicios, el API Gateway y —si hay Python— el motor de riesgo. |
 | `npm test` | Ejecuta la prueba de extremo a extremo (26 verificaciones) en una instancia aislada: no toca sus datos ni necesita detener `npm start`. |
 | `npm run reset` | Borra todos los datos. En el siguiente `npm start` se vuelven a cargar los clientes de ejemplo. Hágalo con la plataforma detenida. |
 | `npm run seed` | Vuelve a cargar los clientes de ejemplo sobre una plataforma que ya está corriendo (solo si no existen). |
 
 Para arrancar **sin** datos de ejemplo: `npm run reset` y luego `$env:SEED="false"; npm start` (PowerShell) o `SEED=false npm start` (macOS/Linux).
+
+Para arrancar **sin** el motor de riesgo aunque haya Python: `$env:RISK_ENGINE="false"; npm start` (PowerShell) o `RISK_ENGINE=false npm start` (macOS/Linux).
 
 ## 3. Usuarios
 
@@ -135,6 +148,7 @@ Cada documento solo puede registrarse una vez (registro maestro único). Para re
 | 3. Microservicios | Identidad, Clientes, Créditos, Evaluación, Desembolso y pagos, Contabilidad, Notificaciones | [services/](services/) | 4001–4007 |
 | 4. Bus de eventos | Publicación/suscripción, entrega ordenada, reintentos, outbox, idempotencia | [event-bus/](event-bus/) | 4100 |
 | 5. Datos | Una base por servicio (`data/<servicio>.json`), registro maestro de clientes y bodega analítica | `data/`, [services/analytics/](services/analytics/) | 4008 |
+| Analítica avanzada (opcional) | Motor de riesgo en **Python**: modelo entrenado, scoring explicable y métricas en vivo | [services/risk-engine/](services/risk-engine/) | 4009 |
 
 Cada microservicio corre en **su propio proceso**, guarda **solo sus propios datos** y **vuelve a validar el token** aunque la llamada venga del gateway (confianza cero). Los servicios no se llaman entre sí para avanzar el proceso: publican eventos en el bus.
 
@@ -150,6 +164,7 @@ Cada microservicio corre en **su propio proceso**, guarda **solo sus propios dat
 | Contabilidad | Asientos en partida doble, balance de prueba | `disbursement.completed`, `payment.received` |
 | Notificaciones | Mensajes enviados (correo, SMS, push) | hitos del cliente y del crédito |
 | Analítica | Bodega de hechos y KPI | todos (`*`) |
+| Motor de riesgo (Python, opcional) | Modelo entrenado, scoring por solicitud y métricas de cartera | todos (`*`) |
 
 Créditos guarda solo el `customerId`: los datos del cliente se consultan por API al servicio de Clientes y nunca se copian.
 
@@ -228,10 +243,54 @@ Todas las rutas pasan por el gateway con el prefijo `/api` y, salvo las pública
 | `POST /payments`, `GET /notifications/me` | cliente |
 | `GET /accounting/entries`, `GET /accounting/trial-balance`, `GET /analytics/kpis` | analista, admin |
 | `GET /bus/events`, `GET /bus/subscriptions`, `GET /audit` | admin |
+| `GET /risk/metrics`, `GET /risk/scores`, `GET /risk/model`, `POST /risk/score` | analista, admin (motor Python) |
+| `POST /risk/retrain` | admin (motor Python) |
 | `GET /health` | público |
 
-## 9. Alcance
+## 9. Motor de riesgo en Python (opcional)
 
-Es un prototipo académico: el OTP, la biometría, la central de riesgo, ACH, PSE y las listas SARLAFT están **simulados**, y los datos se guardan en archivos JSON locales. Para producción, la sección 5.4 del documento propone contenedores con orquestación, un bus gestionado (Kafka o RabbitMQ), bases de datos administradas por servicio, un proveedor de identidad OpenID Connect, una bóveda de secretos y TLS de extremo a extremo.
+Componente adicional en [services/risk-engine/](services/risk-engine/) que aporta lo que la central de riesgo simulada no puede: **cálculo real de riesgo** en lugar de un valor fijo.
+
+### Qué lo diferencia de los datos simulados
+
+| | Central de riesgo simulada | Motor de riesgo en Python |
+|---|---|---|
+| Origen del puntaje | Fijo según el último dígito del documento | **Modelo entrenado** (regresión logística) |
+| Variables | Ninguna | Cuota/ingreso, gastos/ingreso, monto, plazo, ingreso, reportes |
+| Explicación | — | Aporte de cada variable a la decisión |
+| Actualización | Nunca cambia | **Reentrena** con los desenlaces reales del bus |
+| Métricas | — | Se recalculan **con cada evento** |
+
+### Las tres cosas que hace
+
+1. **Scoring real y explicable.** Entrena una regresión logística (descenso de gradiente sobre NumPy) y calcula la probabilidad de incumplimiento de cada solicitud, el score equivalente (300–950), la banda (A–E) y **qué variable pesó más** en el resultado.
+2. **Datos en tiempo real.** Está suscrito a `*` (todos los eventos). Cada solicitud que entra se puntúa en el momento, y las métricas de cartera —exposición, PD promedio, pérdida esperada— se recalculan con cada evento. Además publica un evento `risk.snapshot` cada 15 segundos, visible en la pantalla **Bus de eventos**.
+3. **Reentrenamiento en caliente.** Los desenlaces observados en el bus (desembolsos completados frente a fallidos o rechazos) se incorporan al conjunto de entrenamiento. El botón **Reentrenar** en la pantalla **Riesgo** lo ejecuta y muestra cómo mejora el AUC.
+
+### Dónde verlo
+
+Entre como **Gerencia** o **Analista** y abra la pantalla **Riesgo**: ahí están el modelo entrenado con sus métricas (AUC, precisión, log-loss), el peso de cada variable, la distribución por banda y la tabla de solicitudes puntuadas.
+
+### API
+
+| Método y ruta | Rol | Qué hace |
+|---|---|---|
+| `GET /api/risk/metrics` | analista, gerencia | Métricas de cartera recalculadas en vivo |
+| `GET /api/risk/scores` | analista, gerencia | Solicitudes puntuadas por el modelo |
+| `GET /api/risk/model` | analista, gerencia | Variables y coeficientes del modelo |
+| `POST /api/risk/score` | analista, gerencia | Puntúa una solicitud hipotética sin radicarla |
+| `POST /api/risk/retrain` | gerencia | Reentrena incorporando los desenlaces del bus |
+
+Igual que los demás microservicios, **valida el token por sí mismo** (confianza cero): un cliente recibe 403 y una llamada sin token, 401. El JWT HS256 se firma y verifica en Python con el mismo secreto que usa Node.
+
+### Por qué Python y no Node
+
+El scoring es trabajo numérico: Python con NumPy es el entorno natural para entrenar modelos, y así el prototipo muestra un punto clave de la arquitectura — **los microservicios no tienen que compartir tecnología**. Se comunican por eventos y HTTP, así que cada uno puede escribirse en el lenguaje que mejor le sirva. Esto es poliglotismo tecnológico, una de las ventajas del desacoplamiento por bus de eventos.
+
+Usa solo la librería estándar de Python más NumPy: no hace falta instalar un framework web.
+
+## 10. Alcance
+
+Es un prototipo académico: el OTP, la biometría, la central de riesgo, ACH, PSE y las listas SARLAFT están **simulados**, y los datos se guardan en archivos JSON locales. El motor de riesgo sí entrena un modelo real, pero sobre un histórico generado de forma reproducible: en producción se entrenaría con la cartera histórica de la entidad. Para producción, la sección 5.4 del documento propone contenedores con orquestación, un bus gestionado (Kafka o RabbitMQ), bases de datos administradas por servicio, un proveedor de identidad OpenID Connect, una bóveda de secretos y TLS de extremo a extremo.
 
 El documento completo del taller y el enunciado del reto están en [docs/](docs/).

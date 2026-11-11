@@ -16,6 +16,8 @@ const basePorts = {
   accounting: 4006,
   notifications: 4007,
   analytics: 4008,
+  // Motor de riesgo en Python (servicio opcional: la plataforma funciona sin él).
+  risk: 4009,
 };
 
 const ports = Object.fromEntries(
