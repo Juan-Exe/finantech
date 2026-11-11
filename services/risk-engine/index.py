@@ -232,11 +232,12 @@ class StreamGenerator:
     la cartera sobre los eventos ya recibidos y publica un evento `risk.snapshot`.
     """
 
-    def __init__(self, interval: float = 15.0) -> None:
+    def __init__(self, interval: float = 60.0) -> None:
         self.interval = interval
         self.enabled = os.environ.get("RISK_STREAM", "true") != "false"
         self._stop = threading.Event()
         self.ticks = 0
+        self._last: tuple | None = None  # última foto publicada
 
     def start(self) -> None:
         if not self.enabled:
@@ -249,6 +250,16 @@ class StreamGenerator:
                     m = state.metrics()
                     if not m["portfolio"]["scored"]:
                         continue
+                    # Solo se publica cuando la cartera cambió: un bus lleno de
+                    # fotos idénticas esconde los eventos de negocio.
+                    fingerprint = (
+                        m["portfolio"]["scored"],
+                        m["portfolio"]["exposure"],
+                        m["portfolio"]["avgProbabilityOfDefault"],
+                    )
+                    if fingerprint == self._last:
+                        continue
+                    self._last = fingerprint
                     self.ticks += 1
                     bus.publish(
                         "risk.snapshot",
@@ -265,7 +276,7 @@ class StreamGenerator:
                     log(f"error en el generador de flujo: {err}")
 
         threading.Thread(target=loop, daemon=True).start()
-        log(f"generador de flujo activo: publica risk.snapshot cada {int(self.interval)} s")
+        log(f"generador de flujo activo: revisa la cartera cada {int(self.interval)} s y publica risk.snapshot cuando cambia")
 
     def stop(self) -> None:
         self._stop.set()
